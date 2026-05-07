@@ -15,7 +15,7 @@ on:
     inputs: *workflow-inputs
 
 concurrency:
-  group: ${{ github.workflow }}
+  group: publish
   queue: max
 
 jobs:
@@ -60,6 +60,7 @@ jobs:
     name: Build node image
     needs: base
     strategy:
+      fail-fast: false
       matrix:
         include:
         - arch: amd64
