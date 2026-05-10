@@ -8,7 +8,7 @@ inputs:
     description: Version of kind to use.
     type: string
   kubernetes-version:
-    description: Version of Kubernetes to use. Resolves to a tag for the Kubernetes node image in the ghcr.io/scothis/kind/node repository. May also be specified as a fully qualified image.
+    description: Version of Kubernetes to use. Resolves to a tag for the Kubernetes node image in the ghcr.io/reconcilerio/kind/node repository. May also be specified as a fully qualified image.
     type: string
   registry:
     description: Custom local registry to trust for the cluster
@@ -41,7 +41,7 @@ runs:
         fi
         # will fail if there's a node image in the library
         if [[ ! "${version}" =~ [/:@] ]] ; then
-          version="ghcr.io/scothis/kind/node:${version}"
+          version="ghcr.io/reconcilerio/kind/node:${version}"
         fi
         echo "version=${version}" >> "${GITHUB_OUTPUT}"
       shell: bash
