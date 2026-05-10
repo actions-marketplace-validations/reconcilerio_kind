@@ -45,30 +45,38 @@ jobs:
   test:
     name: Test
     needs: build
-    if: needs.build.result == 'success' || needs.build.result == 'skipped'
+    if: always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
     strategy:
       fail-fast: false
       matrix:
         include:
         - name: defaults
-        - name: k8s v1.36
-          with:
-            kubernetes-version: v1.36
-        - name: k8s v1.35
-          with:
-            kubernetes-version: v1.35
-        - name: k8s v1.34
-          with:
-            kubernetes-version: v1.34
-        - name: k8s v1.33
-          with:
-           kubernetes-version: v1.33
+        - name: k8s-v1.36
+          kubernetes-version: v1.36
+        - name: k8s-v1.35
+          kubernetes-version: v1.35
+        - name: k8s-v1.34
+          kubernetes-version: v1.34
+        - name: k8s-v1.33
+          kubernetes-version: v1.33
+        - name: local-registry
+          registry: {}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
+    - name: Install crane
+      uses: ./.github/actions/install-crane
+    - name: OCI registry
+      id: registry
+      if: matrix.registry
+      uses: reconcilerio/registry@v1
+      with: ${{ matrix.registry || fromJson('{}') }}
     - name: KinD cluster
       uses: ./
-      with: ${{ matrix.with || fromJSON('{}') }}
+      with:
+        kubernetes-version: ${{ matrix.kubernetes-version }}
+        registry: ${{ steps.registry.outputs.registry }}
+        registry-ca: ${{ steps.registry.outputs.tls-ca }}
     - name: Cluster info
       run: |
         set -euo pipefail
@@ -85,3 +93,32 @@ jobs:
         echo "##[group]kubectl describe nodes"
           kubectl describe nodes
         echo "##[endgroup]"
+    - name: Run a pod
+      run: |
+        set -euo pipefail
+
+        image="busybox"
+        registry="${{ steps.registry.outputs.registry }}"
+        if [[ "${registry}" != "" ]] ; then
+          echo "##[group]copy image into local registry"
+            crane copy "${image}" "${registry}/test/${image}"
+            image="${registry}/test/${image}"
+          echo "##[endgroup]"
+        fi
+
+        echo "##[group]run image"
+          kubectl run get-env --image="${image}" -it --restart=Never -- env
+        echo "##[endgroup]"
+
+    - name: Collect logs
+      id: cluster-logs
+      if: always()
+      run: |
+        set -euo pipefail
+
+        echo "logs-dir=$(kind export logs --name kind)" >> "${GITHUB_OUTPUT}"
+    - uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: kind-logs-${{ matrix.name }}
+        path: "${{ steps.cluster-logs.outputs.logs-dir }}"
