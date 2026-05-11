@@ -1,5 +1,5 @@
 name: Kubernetes in Docker
-description: kind: Run a Kubernetes cluster in Docker
+description: Run a Kubernetes cluster in Docker with kind
 branding:
   icon: refresh-cw
   color: green
